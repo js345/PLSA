@@ -70,7 +70,7 @@ class PLSA:
             n_dk, n_wk = self.e_step()
             self.m_step(n_dk, n_wk)
             log_p = self.compute_log()
-            log_diff = abs(log_p - self.log_p)
+            log_diff = abs(log_p - self.log_p) / self.log_p
             log_graph.append(log_p)
             log_diff_graph.append(log_diff)
             if log_diff < diff:

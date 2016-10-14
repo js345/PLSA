@@ -157,7 +157,7 @@ class PLSA:
         return docs, word_count_list, word_dict
 
 if __name__ == '__main__':
-    plsa = PLSA()
+    plsa = PLSA(20, 0.9)
     log_graph, diff_graph = plsa.run()
     for topic in plsa.theta_s:
         print sorted(topic.items(), key=lambda x: x[1], reverse=True)[:10]

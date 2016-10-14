@@ -38,9 +38,9 @@ class PLSA:
 
     def e_step(self):
         # np 2d array ndk dim |D| * K
-        n_dk = np.zeros((len(self.docs), self.K))
+        n_dk = np.ones((len(self.docs), self.K))
         # nwk dim |V| * K dict of 1d array
-        n_wk = {word: np.zeros(self.K) for word in self.word_dict}
+        n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in range(self.K):
             for i in range(len(self.docs)):
                 n_dk[i][k] = self.calculate_ndk(i, k)
@@ -49,12 +49,11 @@ class PLSA:
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
-        # update pi
-        for i in range(len(self.docs)):
-            for k in range(self.K):
-                self.pi_s[i][k] = n_dk[i][k] / sum(n_dk[i])
-        # update theta
         for k in range(self.K):
+            # update pi
+            for i in range(len(self.docs)):
+                self.pi_s[i][k] = n_dk[i][k] / sum(n_dk[i])
+            # update theta
             for word in self.theta_s[k]:
                 self.theta_s[k][word] = n_wk[word][k] / sum([n_wk[word][k] for word in n_wk])
 

@@ -109,7 +109,7 @@ class PLSA:
                 p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
             denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
             nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
-            ndk += self.word_count_list[i][word] * nominator / denominator
+            ndk += self.word_count_list[i].get(word, 0) * nominator / denominator
         return ndk
 
     def calculate_nwk(self, word, k):
@@ -129,7 +129,7 @@ class PLSA:
                 p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
             denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
             nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
-            nwk += self.word_count_list[i][word] * nominator / denominator
+            nwk += self.word_count_list[i].get(word, 0) * nominator / denominator
         return nwk
 
     @staticmethod
@@ -158,6 +158,8 @@ class PLSA:
 if __name__ == '__main__':
     plsa = PLSA()
     log_graph, diff_graph = plsa.run()
+    for topic in plsa.theta_s:
+        print sorted(topic.items(), key=lambda x: x[1], reverse=True)[:10]
     plt.plot(log_graph)
     plt.title("Log likelihood plot")
     plt.show()

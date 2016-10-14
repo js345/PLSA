@@ -41,15 +41,11 @@ class PLSA:
         n_dk = np.zeros((len(self.docs), self.K))
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.zeros(self.K) for word in self.word_dict}
-        # estimate ndk
-        for i in range(len(self.docs)):
-            for k in range(self.K):
+        for k in range(self.K):
+            for i in range(len(self.docs)):
                 n_dk[i][k] = self.calculate_ndk(i, k)
-        # estimate nwk
-        for word in self.word_dict:
-            for k in range(self.K):
+            for word in self.word_dict:
                 n_wk[word][k] = self.calculate_nwk(word, k)
-
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
@@ -68,7 +64,9 @@ class PLSA:
         for i in range(iteration):
             print "Iteration " + str(i)
             n_dk, n_wk = self.e_step()
+            print "E step done"
             self.m_step(n_dk, n_wk)
+            print "M step done"
             log_p = self.compute_log()
             log_diff = abs(log_p - self.log_p) / self.log_p
             log_graph.append(log_p)

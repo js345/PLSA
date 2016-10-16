@@ -26,14 +26,15 @@ class PLSA:
         self.lamb = lamb
         self.filename = filename
         self.docs, self.word_count_list, self.word_dict = self.read_file(filename)
-        print len(self.docs), len(self.word_count_list), len(self.word_dict)
+        print (len(self.docs), len(self.word_count_list), len(self.word_dict))
         # random initialization of parameters
+        np.random.seed(0)
         self.pi_s = [np.random.dirichlet(np.ones(K)) for i in range(len(self.docs))]
         # K dictionaries of values sum to 1 in each
         self.theta_s = [{k: v for k, v in zip(self.word_dict, np.random.dirichlet(np.ones(len(self.word_dict))))} for i in range(K)]
         # generate background model
         total = sum(self.word_dict.values())
-        self.word_dict = {k: v / total for k, v in self.word_dict.iteritems()}
+        self.word_dict = {k: v / total for k, v in self.word_dict.items()}
         # log likelihood
         self.log_p = None
         # memoization
@@ -110,17 +111,17 @@ class PLSA:
                     denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]
                     nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
                     self.outer_sum[word][i][k] = count * nominator / denominator
-        print "Preprocess done"
+        print ("Preprocess done")
 
     def run(self, iteration=100, diff=0.0001):
         self.log_p = self.compute_log()
         log_graph, log_diff_graph = list(), list()
         for i in range(iteration):
-            print "Iteration " + str(i)
+            print ("Iteration " + str(i))
             n_dk, n_wk = self.e_step()
-            print "E step done"
+            print ("E step done")
             self.m_step(n_dk, n_wk)
-            print "M step done"
+            print ("M step done")
             log_p = self.compute_log()
             log_diff = abs(self.log_p - log_p) / self.log_p
             self.log_p = log_p
@@ -158,7 +159,7 @@ class PLSA:
         word_count_list = list()
         word_dict = dict()
         f = open(filename, 'r')
-        for line in f.readlines():
+        for line in f.readlines()[:10]:
             doc = line.strip().split(' ')
             word_count = dict()
             for word in doc:
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     plsa = PLSA(20, 0.9)
     log_graph, diff_graph = plsa.run()
     for topic in plsa.theta_s:
-        print sorted(topic.items(), key=lambda x: x[1], reverse=True)[:10]
+        print (sorted(topic.items(), key=lambda x: x[1], reverse=True)[:10])
     plt.plot(log_graph)
     plt.title("Log likelihood plot")
     plt.show()

@@ -35,60 +35,77 @@ class PLSA:
         self.word_dict = {k: v / total for k, v in self.word_dict.iteritems()}
         # log likelihood
         self.log_p = None
+        # memoization
+        # inner_sum structure {word : np.zeros(len(self.docs)) for word in self.word_dict}
+        self.inner_sum = dict()
+        # outer_sum structure {word : np.zeros(len(self.docs),self.K) for word in self.word_dict}
+        self.outer_sum = dict()
 
     def e_step(self):
+        """
+        E step compute two counts
+        :return: n_dk, n_wk
+        :rtype:
+        """
         # np 2d array ndk dim |D| * K
         n_dk = np.ones((len(self.docs), self.K))
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in range(self.K):
             for i in range(len(self.docs)):
-                n_dk[i][k] = self.calculate_ndk(i, k)
+                n_dk[i][k] = sum(self.outer_sum[w][i][k] for w in self.outer_sum)
             for word in self.word_dict:
-                n_wk[word][k] = self.calculate_nwk(word, k)
+                n_wk[word][k] = sum(self.outer_sum[word][index][k] for index in range(len(self.docs)))
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
-        for k in range(self.K):
-            # update pi
-            for i in range(len(self.docs)):
-                self.pi_s[i][k] = n_dk[i][k] / sum(n_dk[i])
-            # update theta
-            for word in self.theta_s[k]:
-                self.theta_s[k][word] = n_wk[word][k] / sum([n_wk[word][k] for word in n_wk])
-
-    def run(self, iteration=100, diff=0.0001):
-        self.log_p = self.compute_log()
-        log_graph, log_diff_graph = list(), list()
-        for i in range(iteration):
-            print "Iteration " + str(i)
-            n_dk, n_wk = self.e_step()
-            print "E step done"
-            self.m_step(n_dk, n_wk)
-            print "M step done"
-            log_p = self.compute_log()
-            log_diff = abs(log_p - self.log_p) / self.log_p
-            log_graph.append(log_p)
-            log_diff_graph.append(log_diff)
-            if log_diff < diff:
-                break
-        return log_graph, log_diff_graph
-
-    def compute_log(self):
         """
-        Compute log likelihood
+        Using counts to update parameters
+        :param n_dk:
+        :type n_dk:
+        :param n_wk:
+        :type n_wk:
         :return:
         :rtype:
         """
-        log_likelihood = 0
         for i in range(len(self.docs)):
-            for j in range(len(self.docs[i])):
-                inner_sum = 0
+            n_dk_sum = sum(n_dk[i])
+            # update pi
+            for k in range(self.K):
+                self.pi_s[i][k] = n_dk[i][k] / n_dk_sum
+
+        for k in range(self.K):
+            n_wk_sum = sum(n_wk[w][k] for w in n_wk)
+            # update theta
+            for word in self.theta_s[k]:
+                self.theta_s[k][word] = n_wk[word][k] / n_wk_sum
+
+    def pre_process(self):
+        """
+        pre compute inner and outer sums to improve performance
+        :return:
+        :rtype:
+        """
+        # memoization on inner_sum
+        for word in self.word_dict:
+            self.inner_sum[word] = np.zeros(len(self.docs))
+            for i in range(len(self.docs)):
+                p_sum = 0
+                for k_p in range(self.K):
+                    p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
+                self.inner_sum[word][i] = p_sum
+        # memoization on outer_sum based on inner_sum
+        for word in self.word_dict:
+            self.outer_sum[word] = np.zeros((len(self.docs), self.K))
+            for i in range(len(self.docs)):
+                count = self.word_count_list[i].get(word, 0)
+                # no word count means 0 for all k
+                if count == 0:
+                    continue
                 for k in range(self.K):
-                    inner_sum += self.pi_s[i][k] * self.theta_s[k][self.docs[i][j]]
-                inner_sum = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[self.docs[i][j]]
-                log_likelihood += inner_sum
-        return log_likelihood
+                    denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]
+                    nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
+                    self.outer_sum[word][i][k] = count * nominator / denominator
 
     def calculate_ndk(self, i, k):
         """
@@ -130,6 +147,39 @@ class PLSA:
             nwk += self.word_count_list[i].get(word, 0) * nominator / denominator
         return nwk
 
+    def run(self, iteration=100, diff=0.0001):
+        self.log_p = self.compute_log()
+        log_graph, log_diff_graph = list(), list()
+        for i in range(iteration):
+            print "Iteration " + str(i)
+            n_dk, n_wk = self.e_step()
+            print "E step done"
+            self.m_step(n_dk, n_wk)
+            print "M step done"
+            log_p = self.compute_log()
+            log_diff = abs(self.log_p - log_p) / self.log_p
+            self.log_p = log_p
+            log_graph.append(log_p)
+            log_diff_graph.append(log_diff)
+            if log_diff < diff:
+                pass
+        return log_graph, log_diff_graph
+
+    def compute_log(self):
+        """
+        Compute log likelihood
+        :return:
+        :rtype:
+        """
+        self.pre_process()
+        log_likelihood = 0
+        for i in range(len(self.docs)):
+            for j in range(len(self.docs[i])):
+                inner_sum = self.inner_sum[self.docs[i][j]][i]
+                total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[self.docs[i][j]]
+                log_likelihood += total
+        return log_likelihood
+
     @staticmethod
     def read_file(filename):
         """
@@ -143,7 +193,7 @@ class PLSA:
         word_count_list = list()
         word_dict = dict()
         f = open(filename, 'r')
-        for line in f.readlines():
+        for line in f.readlines()[:5]:
             doc = line.strip().split(' ')
             word_count = dict()
             for word in doc:

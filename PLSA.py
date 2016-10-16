@@ -26,10 +26,11 @@ class PLSA:
         self.lamb = lamb
         self.filename = filename
         self.docs, self.word_count_list, self.word_dict = self.read_file(filename)
+        print len(self.docs), len(self.word_count_list), len(self.word_dict)
         # random initialization of parameters
         self.pi_s = [np.random.dirichlet(np.ones(K)) for i in range(len(self.docs))]
         # K dictionaries of values sum to 1 in each
-        self.theta_s = [{k: v for k, v in zip(self.word_dict,np.random.dirichlet(np.ones(len(self.word_dict))))} for i in range(K)]
+        self.theta_s = [{k: v for k, v in zip(self.word_dict, np.random.dirichlet(np.ones(len(self.word_dict))))} for i in range(K)]
         # generate background model
         total = sum(self.word_dict.values())
         self.word_dict = {k: v / total for k, v in self.word_dict.iteritems()}
@@ -86,18 +87,21 @@ class PLSA:
         :return:
         :rtype:
         """
+        # inner_sum structure {word : np.zeros(len(self.docs)) for word in self.word_dict}
+        self.inner_sum = dict()
+        # outer_sum structure {word : np.zeros(len(self.docs),self.K) for word in self.word_dict}
+        self.outer_sum = dict()
         # memoization on inner_sum
         for word in self.word_dict:
             self.inner_sum[word] = np.zeros(len(self.docs))
+            # memoization on outer_sum based on inner_sum
+            self.outer_sum[word] = np.zeros((len(self.docs), self.K))
             for i in range(len(self.docs)):
                 p_sum = 0
                 for k_p in range(self.K):
                     p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
                 self.inner_sum[word][i] = p_sum
-        # memoization on outer_sum based on inner_sum
-        for word in self.word_dict:
-            self.outer_sum[word] = np.zeros((len(self.docs), self.K))
-            for i in range(len(self.docs)):
+                # for outer sum
                 count = self.word_count_list[i].get(word, 0)
                 # no word count means 0 for all k
                 if count == 0:
@@ -106,46 +110,7 @@ class PLSA:
                     denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]
                     nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
                     self.outer_sum[word][i][k] = count * nominator / denominator
-
-    def calculate_ndk(self, i, k):
-        """
-        Calculate ndk given document i and topic k
-        :param i:
-        :type i:
-        :param k:
-        :type k:
-        :return:
-        :rtype:
-        """
-        ndk = 0
-        for word in self.word_count_list[i]:
-            p_sum = 0
-            for k_p in range(self.K):
-                p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
-            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
-            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
-            ndk += self.word_count_list[i].get(word, 0) * nominator / denominator
-        return ndk
-
-    def calculate_nwk(self, word, k):
-        """
-        Calculate ndk given word and topic k
-        :param word:
-        :type word:
-        :param k:
-        :type k:
-        :return:
-        :rtype:
-        """
-        nwk = 0
-        for i in range(len(self.word_count_list)):
-            p_sum = 0
-            for k_p in range(self.K):
-                p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
-            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
-            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
-            nwk += self.word_count_list[i].get(word, 0) * nominator / denominator
-        return nwk
+        print "Preprocess done"
 
     def run(self, iteration=100, diff=0.0001):
         self.log_p = self.compute_log()

@@ -25,7 +25,7 @@ class PLSA:
         self.K = K
         self.lamb = lamb
         self.filename = filename
-        self.docs, self.word_count_list, self.word_dict = self.read_file(filename)
+        self.docs, self.word_count_list, self.word_dict, self.doc_list = self.read_file(filename)
         print (len(self.docs), len(self.word_count_list), len(self.word_dict))
         # random initialization of parameters
         np.random.seed(0)
@@ -54,10 +54,11 @@ class PLSA:
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in xrange(self.K):
+            print k
             for i in range(len(self.docs)):
                 n_dk[i][k] = sum(self.outer_sum[w][i][k] for w in self.word_count_list[i])
             for word in self.word_dict:
-                n_wk[word][k] = sum(self.outer_sum[word][index][k] for index in range(len(self.docs)))
+                n_wk[word][k] = sum(self.outer_sum[word][index][k] for index in self.doc_list[word])
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
@@ -152,6 +153,7 @@ class PLSA:
         docs = list()
         word_count_list = list()
         word_dict = dict()
+        doc_list = dict()
         f = open(filename, 'r')
         for line in f.readlines():
             doc = line.strip().split(' ')
@@ -159,9 +161,10 @@ class PLSA:
             for word in doc:
                 word_count[word] = word_count.get(word, 0) + 1
                 word_dict[word] = word_dict.get(word, 0) + 1
+                doc_list.setdefault(word, []).append(len(docs))
             docs.append(doc)
             word_count_list.append(word_count)
-        return docs, word_count_list, word_dict
+        return docs, word_count_list, word_dict, doc_list
 
 if __name__ == '__main__':
     plsa = PLSA(20, 0.9)

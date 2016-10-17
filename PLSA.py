@@ -38,10 +38,8 @@ class PLSA:
         # log likelihood
         self.log_p = None
         # memoization
-        # inner_sum structure {word : np.zeros(len(self.docs)) for word in self.word_dict}
-        self.inner_sum = dict()
-        # outer_sum structure {word : np.zeros(len(self.docs),self.K) for word in self.word_dict}
-        self.outer_sum = dict()
+        # inner_sum structure [{word : inner_sum}]
+        self.inner_sum = list()
 
     def e_step(self):
         """
@@ -55,9 +53,9 @@ class PLSA:
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in xrange(self.K):
             for i in range(len(self.docs)):
-                n_dk[i][k] = sum(self.outer_sum[w][i][k] for w in self.word_count_list[i])
+                n_dk[i][k] = self.calculate_ndk(i, k)
             for word in self.word_dict:
-                n_wk[word][k] = sum(self.outer_sum[word][index][k] for index in self.doc_list[word])
+                n_wk[word][k] = self.calculate_nwk(word, k)
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
@@ -82,27 +80,41 @@ class PLSA:
             for word in self.theta_s[k]:
                 self.theta_s[k][word] = n_wk[word][k] / n_wk_sum
 
-    def pre_process(self):
+    def calculate_ndk(self, i, k):
         """
-        pre compute inner and outer sums to improve performance
+        Calculate ndk given document i and topic k
+        :param i:
+        :type i:
+        :param k:
+        :type k:
         :return:
         :rtype:
         """
-        # inner_sum structure {word : np.zeros(len(self.docs)) for word in self.word_dict}
-        self.inner_sum = {word: np.zeros(len(self.docs)) for word in self.word_dict}
-        # outer_sum structure {word : np.zeros(len(self.docs),self.K) for word in self.word_dict}
-        self.outer_sum = {word: np.zeros((len(self.docs), self.K)) for word in self.word_dict}
+        ndk = 0
+        for word in self.word_count_list[i]:
+            p_sum = self.inner_sum[i][word]
+            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
+            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
+            ndk += self.word_count_list[i][word] * nominator / denominator
+        return ndk
 
-        for i in xrange(len(self.docs)):
-            for word, count in self.word_count_list[i].iteritems():
-                self.inner_sum[word][i] = sum(self.pi_s[i][k_p] * self.theta_s[k_p][word] for k_p in xrange(self.K))
-                # for outer sum
-                for k in xrange(self.K):
-                    denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]
-                    nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
-                    self.outer_sum[word][i][k] = count * nominator / denominator
-
-        print ("Preprocess done")
+    def calculate_nwk(self, word, k):
+        """
+        Calculate ndk given word and topic k
+        :param word:
+        :type word:
+        :param k:
+        :type k:
+        :return:
+        :rtype:
+        """
+        nwk = 0
+        for i in self.doc_list[word]:
+            p_sum = self.inner_sum[i][word]
+            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
+            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
+            nwk += self.word_count_list[i][word] * nominator / denominator
+        return nwk
 
     def run(self, iteration=100, diff=0.0001):
         self.log_p = self.compute_log()
@@ -114,12 +126,14 @@ class PLSA:
             self.m_step(n_dk, n_wk)
             print ("M step done")
             log_p = self.compute_log()
-            log_diff = abs(self.log_p - log_p) / self.log_p
+            log_diff = abs((self.log_p - log_p) / self.log_p)
             self.log_p = log_p
             log_graph.append(log_p)
             log_diff_graph.append(log_diff)
+            print log_p
+            print log_diff
             if log_diff < diff:
-                pass
+                break
         return log_graph, log_diff_graph
 
     def compute_log(self):
@@ -128,11 +142,12 @@ class PLSA:
         :return:
         :rtype:
         """
-        self.pre_process()
+        self.inner_sum = [{} for i in xrange(len(self.docs))]
         log_likelihood = 0
         for i in xrange(len(self.docs)):
             for word, count in self.word_count_list[i].iteritems():
-                inner_sum = self.inner_sum[word][i]
+                inner_sum = sum(self.pi_s[i][k_p] * self.theta_s[k_p][word] for k_p in xrange(self.K))
+                self.inner_sum[i][word] = inner_sum
                 total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[word]
                 log_likelihood += np.log2(total) * count
         return log_likelihood

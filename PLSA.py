@@ -54,7 +54,6 @@ class PLSA:
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in xrange(self.K):
-            print k
             for i in range(len(self.docs)):
                 n_dk[i][k] = sum(self.outer_sum[w][i][k] for w in self.word_count_list[i])
             for word in self.word_dict:
@@ -96,10 +95,7 @@ class PLSA:
 
         for i in xrange(len(self.docs)):
             for word, count in self.word_count_list[i].iteritems():
-                p_sum = 0
-                for k_p in xrange(self.K):
-                    p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
-                self.inner_sum[word][i] = p_sum
+                self.inner_sum[word][i] = sum(self.pi_s[i][k_p] * self.theta_s[k_p][word] for k_p in xrange(self.K))
                 # for outer sum
                 for k in xrange(self.K):
                     denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]

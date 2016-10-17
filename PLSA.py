@@ -53,7 +53,7 @@ class PLSA:
         n_dk = np.ones((len(self.docs), self.K))
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
-        for k in range(self.K):
+        for k in xrange(self.K):
             for i in range(len(self.docs)):
                 n_dk[i][k] = sum(self.outer_sum[w][i][k] for w in self.outer_sum)
             for word in self.word_dict:
@@ -70,13 +70,13 @@ class PLSA:
         :return:
         :rtype:
         """
-        for i in range(len(self.docs)):
+        for i in xrange(len(self.docs)):
             n_dk_sum = sum(n_dk[i])
             # update pi
-            for k in range(self.K):
+            for k in xrange(self.K):
                 self.pi_s[i][k] = n_dk[i][k] / n_dk_sum
 
-        for k in range(self.K):
+        for k in xrange(self.K):
             n_wk_sum = sum(n_wk[w][k] for w in n_wk)
             # update theta
             for word in self.theta_s[k]:
@@ -97,17 +97,17 @@ class PLSA:
             self.inner_sum[word] = np.zeros(len(self.docs))
             # memoization on outer_sum based on inner_sum
             self.outer_sum[word] = np.zeros((len(self.docs), self.K))
-            for i in range(len(self.docs)):
-                p_sum = 0
-                for k_p in range(self.K):
-                    p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
-                self.inner_sum[word][i] = p_sum
-                # for outer sum
+            for i in xrange(len(self.docs)):
                 count = self.word_count_list[i].get(word, 0)
                 # no word count means 0 for all k
                 if count == 0:
                     continue
-                for k in range(self.K):
+                p_sum = 0
+                for k_p in xrange(self.K):
+                    p_sum += self.pi_s[i][k_p] * self.theta_s[k_p][word]
+                self.inner_sum[word][i] = p_sum
+                # for outer sum
+                for k in xrange(self.K):
                     denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * self.inner_sum[word][i]
                     nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
                     self.outer_sum[word][i][k] = count * nominator / denominator
@@ -116,7 +116,7 @@ class PLSA:
     def run(self, iteration=100, diff=0.0001):
         self.log_p = self.compute_log()
         log_graph, log_diff_graph = list(), list()
-        for i in range(iteration):
+        for i in xrange(iteration):
             print ("Iteration " + str(i))
             n_dk, n_wk = self.e_step()
             print ("E step done")
@@ -139,8 +139,8 @@ class PLSA:
         """
         self.pre_process()
         log_likelihood = 0
-        for i in range(len(self.docs)):
-            for j in range(len(self.docs[i])):
+        for i in xrange(len(self.docs)):
+            for j in xrange(len(self.docs[i])):
                 inner_sum = self.inner_sum[self.docs[i][j]][i]
                 total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[self.docs[i][j]]
                 log_likelihood += total
@@ -159,7 +159,7 @@ class PLSA:
         word_count_list = list()
         word_dict = dict()
         f = open(filename, 'r')
-        for line in f.readlines()[:10]:
+        for line in f.readlines():
             doc = line.strip().split(' ')
             word_count = dict()
             for word in doc:

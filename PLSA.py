@@ -131,10 +131,10 @@ class PLSA:
         self.pre_process()
         log_likelihood = 0
         for i in xrange(len(self.docs)):
-            for j in xrange(len(self.docs[i])):
-                inner_sum = self.inner_sum[self.docs[i][j]][i]
-                total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[self.docs[i][j]]
-                log_likelihood += total
+            for word, count in self.word_count_list[i].iteritems():
+                inner_sum = self.inner_sum[word][i]
+                total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[word]
+                log_likelihood += np.log2(total) * count
         return log_likelihood
 
     @staticmethod

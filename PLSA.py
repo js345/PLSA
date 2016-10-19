@@ -25,11 +25,11 @@ class PLSA:
         self.K = K
         self.lamb = lamb
         self.filename = filename
-        self.docs, self.word_count_list, self.word_dict, self.doc_list = self.read_file(filename)
-        print (len(self.docs), len(self.word_count_list), len(self.word_dict))
+        self.word_count_list, self.word_dict, self.doc_list = self.read_file(filename)
+        print (len(self.word_count_list), len(self.word_dict))
         # random initialization of parameters
         np.random.seed(0)
-        self.pi_s = [np.random.dirichlet(np.ones(K)) for i in range(len(self.docs))]
+        self.pi_s = [np.random.dirichlet(np.ones(K)) for i in range(len(self.word_count_list))]
         # K dictionaries of values sum to 1 in each
         self.theta_s = [{k: v for k, v in zip(self.word_dict, np.random.dirichlet(np.ones(len(self.word_dict))))} for i in range(K)]
         # generate background model
@@ -48,11 +48,11 @@ class PLSA:
         :rtype:
         """
         # np 2d array ndk dim |D| * K
-        n_dk = np.ones((len(self.docs), self.K))
+        n_dk = np.ones((len(self.word_count_list), self.K))
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
         for k in xrange(self.K):
-            for i in range(len(self.docs)):
+            for i in range(len(self.word_count_list)):
                 n_dk[i][k] = self.calculate_ndk(i, k)
             for word in self.word_dict:
                 n_wk[word][k] = self.calculate_nwk(word, k)
@@ -68,7 +68,7 @@ class PLSA:
         :return:
         :rtype:
         """
-        for i in xrange(len(self.docs)):
+        for i in xrange(len(self.word_count_list)):
             n_dk_sum = sum(n_dk[i])
             # update pi
             for k in xrange(self.K):
@@ -142,9 +142,9 @@ class PLSA:
         :return:
         :rtype:
         """
-        self.inner_sum = [{} for i in xrange(len(self.docs))]
+        self.inner_sum = [{} for i in xrange(len(self.word_count_list))]
         log_likelihood = 0
-        for i in xrange(len(self.docs)):
+        for i in xrange(len(self.word_count_list)):
             for word, count in self.word_count_list[i].iteritems():
                 inner_sum = sum(self.pi_s[i][k_p] * self.theta_s[k_p][word] for k_p in xrange(self.K))
                 self.inner_sum[i][word] = inner_sum
@@ -161,21 +161,23 @@ class PLSA:
         :return:
         :rtype:
         """
-        docs = list()
+        # docs = list()
         word_count_list = list()
         word_dict = dict()
         doc_list = dict()
+        index = 0
         f = open(filename, 'r')
-        for line in f.readlines():
+        for line in f.readlines()[:10]:
             doc = line.strip().split(' ')
             word_count = dict()
             for word in doc:
                 word_count[word] = word_count.get(word, 0) + 1
                 word_dict[word] = word_dict.get(word, 0) + 1
-                doc_list.setdefault(word, []).append(len(docs))
-            docs.append(doc)
+                doc_list.setdefault(word, set()).add(index)
+            # docs.append(doc)
+            index += 1
             word_count_list.append(word_count)
-        return docs, word_count_list, word_dict, doc_list
+        return word_count_list, word_dict, doc_list
 
 if __name__ == '__main__':
     plsa = PLSA(20, 0.9)

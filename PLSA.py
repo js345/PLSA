@@ -167,7 +167,7 @@ class PLSA:
         doc_list = dict()
         index = 0
         f = open(filename, 'r')
-        for line in f.readlines()[:10]:
+        for line in f.readlines():
             doc = line.strip().split(' ')
             word_count = dict()
             for word in doc:

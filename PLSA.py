@@ -51,11 +51,10 @@ class PLSA:
         n_dk = np.ones((len(self.word_count_list), self.K))
         # nwk dim |V| * K dict of 1d array
         n_wk = {word: np.ones(self.K) for word in self.word_dict}
-        for k in xrange(self.K):
-            for i in range(len(self.word_count_list)):
-                n_dk[i][k] = self.calculate_ndk(i, k)
-            for word in self.word_dict:
-                n_wk[word][k] = self.calculate_nwk(word, k)
+        for i in range(len(self.word_count_list)):
+            n_dk[i] = self.calculate_ndk(i, 0)
+        for word in self.word_dict:
+            n_wk[word] = self.calculate_nwk(word, 0)
         return n_dk, n_wk
 
     def m_step(self, n_dk, n_wk):
@@ -90,13 +89,13 @@ class PLSA:
         :return:
         :rtype:
         """
-        ndk = 0
+        ndk = np.zeros(self.K)
         for word in self.word_count_list[i]:
             p_sum = self.inner_sum[i][word]
             denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
-            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
+            nominator = (1 - self.lamb) * np.array([self.theta_s[k][word] for k in xrange(self.K)])
             ndk += self.word_count_list[i][word] * nominator / denominator
-        return ndk
+        return np.array([ndk[k] * self.pi_s[i][k] for k in xrange(self.K)])
 
     def calculate_nwk(self, word, k):
         """
@@ -108,13 +107,13 @@ class PLSA:
         :return:
         :rtype:
         """
-        nwk = 0
+        nwk = np.zeros(self.K)
         for i in self.doc_list[word]:
             p_sum = self.inner_sum[i][word]
             denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
-            nominator = (1 - self.lamb) * self.pi_s[i][k] * self.theta_s[k][word]
+            nominator = (1 - self.lamb) * self.pi_s[i]
             nwk += self.word_count_list[i][word] * nominator / denominator
-        return nwk
+        return np.array([nwk[k] * self.theta_s[k][word] for k in xrange(self.K)])
 
     def run(self, iteration=100, diff=0.0001):
         self.log_p = self.compute_log()

@@ -91,8 +91,7 @@ class PLSA:
         """
         ndk = np.zeros(self.K)
         for word in self.word_count_list[i]:
-            p_sum = self.inner_sum[i][word]
-            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
+            denominator = self.inner_sum[i][word]
             nominator = (1 - self.lamb) * np.array([self.theta_s[k][word] for k in xrange(self.K)])
             ndk += self.word_count_list[i][word] * nominator / denominator
         return np.array([ndk[k] * self.pi_s[i][k] for k in xrange(self.K)])
@@ -109,8 +108,7 @@ class PLSA:
         """
         nwk = np.zeros(self.K)
         for i in self.doc_list[word]:
-            p_sum = self.inner_sum[i][word]
-            denominator = self.lamb * self.word_dict[word] + (1 - self.lamb) * p_sum
+            denominator = self.inner_sum[i][word]
             nominator = (1 - self.lamb) * self.pi_s[i]
             nwk += self.word_count_list[i][word] * nominator / denominator
         return np.array([nwk[k] * self.theta_s[k][word] for k in xrange(self.K)])
@@ -146,8 +144,8 @@ class PLSA:
         for i in xrange(len(self.word_count_list)):
             for word, count in self.word_count_list[i].iteritems():
                 inner_sum = sum(self.pi_s[i][k_p] * self.theta_s[k_p][word] for k_p in xrange(self.K))
-                self.inner_sum[i][word] = inner_sum
                 total = inner_sum * (1 - self.lamb) + self.lamb * self.word_dict[word]
+                self.inner_sum[i][word] = total
                 log_likelihood += np.log2(total) * count
         return log_likelihood
 
@@ -179,10 +177,12 @@ class PLSA:
         return word_count_list, word_dict, doc_list
 
 if __name__ == '__main__':
-    plsa = PLSA(20, 0.9)
+    plsa = PLSA(20, 0.3)
     log_graph, diff_graph = plsa.run()
     for topic in plsa.theta_s:
         print (sorted(topic.items(), key=lambda x: x[1], reverse=True)[:10])
+    print log_graph
+    print diff_graph
     plt.plot(log_graph)
     plt.title("Log likelihood plot")
     plt.show()
